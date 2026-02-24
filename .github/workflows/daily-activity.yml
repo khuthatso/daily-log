@@ -1,0 +1,39 @@
+name: Daily Activity Log
+
+on:
+  schedule:
+    - cron: '0 12 * * *'  # Runs every day at 12:00 PM UTC
+  workflow_dispatch:       # Allows you to trigger it manually too
+
+jobs:
+  update-log:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Update activity log
+        run: |
+          mkdir -p logs
+          DATE=$(date -u +"%Y-%m-%d")
+          TIME=$(date -u +"%H:%M:%S UTC")
+          DAY=$(date -u +"%A")
+
+          echo "[$DATE $TIME] ✅ Daily check-in — $DAY" >> logs/activity.log
+
+          # Keep log trimmed to last 365 lines
+          if [ $(wc -l < logs/activity.log) -gt 365 ]; then
+            tail -365 logs/activity.log > logs/activity.log.tmp
+            mv logs/activity.log.tmp logs/activity.log
+          fi
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add logs/activity.log
+          git commit -m "📅 Daily activity log — $(date -u +"%Y-%m-%d")"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
